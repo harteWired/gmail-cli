@@ -1,0 +1,28 @@
+# Publish to npm on GitHub Release, using npm trusted publishing (OIDC).
+# No NPM_TOKEN secret is stored: npm verifies the workflow's OIDC identity.
+# One-time setup on npmjs.com: package → Settings → Trusted Publisher →
+# GitHub Actions → org "harteWired", repo "gmail-cli", workflow "publish.yml".
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+  id-token: write # REQUIRED for OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+      # Trusted publishing (OIDC) needs a recent npm (>= 11.5.1).
+      - run: npm install -g npm@latest
+      - run: npm test
+      - run: npm publish --access public
