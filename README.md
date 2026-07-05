@@ -79,6 +79,27 @@ is just a convenience wrapper around this.
 
 Scopes requested: `gmail.modify`, `gmail.compose`, `gmail.send`.
 
+## Multiple accounts
+
+Every command takes `--account NAME` to target a specific inbox. Authorize each one once:
+
+```bash
+gmail auth --account personal
+gmail auth --account work
+```
+
+Then target them per command:
+
+```bash
+gmail list --account work "is:unread"
+gmail send --account personal --to a@b.com --subject Hi --body "hey"
+gmail accounts                 # list configured accounts + the default
+```
+
+The first account you authorize becomes the default (used whenever `--account`
+is omitted). Each account's credentials and token cache are stored separately.
+A single-account setup never needs `--account` at all.
+
 ## Commands
 
 Read:
@@ -117,13 +138,25 @@ Run `gmail help` for the full list.
 
 ## Configuration reference
 
-| Source | Keys |
-|---|---|
-| Env vars | `GMAIL_CLI_CLIENT_ID`, `GMAIL_CLI_CLIENT_SECRET`, `GMAIL_CLI_REFRESH_TOKEN` |
-| Config file (`$GMAIL_CLI_CONFIG` or `~/.config/gmail-cli/config.json`) | `client_id`, `client_secret`, `refresh_token` |
+The config file (`$GMAIL_CLI_CONFIG`, default `~/.config/gmail-cli/config.json`)
+holds named accounts:
 
-Env vars take precedence over the file. The access-token cache lives at
-`~/.config/gmail-cli/token.json`.
+```json
+{
+  "default": "personal",
+  "accounts": {
+    "personal": { "client_id": "…", "client_secret": "…", "refresh_token": "…" },
+    "work":     { "client_id": "…", "client_secret": "…", "refresh_token": "…" }
+  }
+}
+```
+
+Env vars override the active account per-field (handy for single-account CI):
+`GMAIL_CLI_CLIENT_ID`, `GMAIL_CLI_CLIENT_SECRET`, `GMAIL_CLI_REFRESH_TOKEN`.
+
+A legacy flat file (`{ "client_id", "client_secret", "refresh_token" }`) is still
+read as the account named `default`. Per-account token caches live at
+`~/.config/gmail-cli/token-<account>.json`.
 
 ## Development
 

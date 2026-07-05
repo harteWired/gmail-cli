@@ -13,7 +13,7 @@ import {
   listAttachments, base64urlDecode, guessMimeType, parseAddrs,
 } from '../lib/mime.js';
 import { authorize } from '../lib/oauth.js';
-import { resolveCreds, saveConfig, configPath } from '../lib/config.js';
+import { resolveCreds, saveAccount, setAccount, activeAccount, listAccounts, configPath } from '../lib/config.js';
 
 const asArray = (v) => (v === undefined ? [] : [].concat(v));
 const out = (obj) => console.log(JSON.stringify(obj, null, 2));
@@ -84,15 +84,24 @@ async function applyLabels(ids, addLabelIds, removeLabelIds) {
 
 // --- commands ---------------------------------------------------------------
 const commands = {
-  // auth [--client-id X] [--client-secret Y] [--manual]
+  // auth [--account NAME] [--client-id X] [--client-secret Y] [--manual]
   async auth(pos, flags) {
-    if (flags['client-id']) saveConfig({ client_id: flags['client-id'] });
-    if (flags['client-secret']) saveConfig({ client_secret: flags['client-secret'] });
+    const account = flags.account || activeAccount();
+    setAccount(account);
+    const patch = {};
+    if (flags['client-id']) patch.client_id = flags['client-id'];
+    if (flags['client-secret']) patch.client_secret = flags['client-secret'];
+    if (Object.keys(patch).length) saveAccount(account, patch);
     const { clientId, clientSecret } = resolveCreds({ requireToken: false });
     const refreshToken = await authorize({ clientId, clientSecret, manual: !!flags.manual });
-    saveConfig({ refresh_token: refreshToken });
+    saveAccount(account, { refresh_token: refreshToken });
     const me = await gmail('GET', '/profile');
-    out({ authenticated: true, email: me.emailAddress, config: configPath() });
+    out({ authenticated: true, account, email: me.emailAddress, config: configPath() });
+  },
+
+  // accounts — list configured accounts and the active/default one.
+  accounts() {
+    out({ active: activeAccount(), accounts: listAccounts() });
   },
 
   async profile() { out(await gmail('GET', '/profile')); },
@@ -359,8 +368,12 @@ const commands = {
     console.log(`gmail — stateless, zero-dep Gmail CLI
 
 Setup:
-  gmail auth [--manual] [--client-id X --client-secret Y]
+  gmail auth [--account NAME] [--manual] [--client-id X --client-secret Y]
                                          one-time OAuth sign-in
+  gmail accounts                         list configured accounts
+
+Any command takes --account NAME to target a specific inbox (default: the
+configured "default" account).
 
 Read:
   profile | labels
@@ -398,6 +411,7 @@ async function main() {
     process.exit(cmd && !command ? 1 : 0);
   }
   const { positional, flags } = parseArgs(rest);
+  if (flags.account) setAccount(flags.account); // global: select which account this command uses
   try {
     await command(positional, flags);
   } catch (err) {
