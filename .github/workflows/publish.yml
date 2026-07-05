@@ -1,7 +1,7 @@
 # Publish to npm on GitHub Release, using npm trusted publishing (OIDC).
 # No NPM_TOKEN secret is stored: npm verifies the workflow's OIDC identity.
-# One-time setup on npmjs.com: package → Settings → Trusted Publisher →
-# GitHub Actions → org "harteWired", repo "gmail-cli", workflow "publish.yml".
+# One-time setup on npmjs.com: package -> Settings -> Trusted Publisher ->
+# GitHub Actions -> org "harteWired", repo "gmail-cli", workflow "publish.yml".
 name: publish
 
 on:
@@ -25,4 +25,14 @@ jobs:
       # Trusted publishing (OIDC) needs a recent npm (>= 11.5.1).
       - run: npm install -g npm@latest
       - run: npm test
-      - run: npm publish --access public
+      # Idempotent: skip if this version is already on the registry (e.g. a
+      # release cut for a version that was published manually).
+      - name: Publish if new version
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already published — skipping."
+          else
+            npm publish --access public
+          fi
