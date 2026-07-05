@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>gmail-cli — a stateless, agent-friendly Gmail CLI</title>
+  <meta name="description" content="A stateless, zero-dependency, agent-friendly Gmail CLI. Read, send, reply, forward, label, and organize mail from the shell — with JSON output on every command.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #15151e;
+      --ink-card: #1c1b26;
+      --ink-node: #24222f;
+      --cream: #f5efe0;
+      --muted: #b5b3a8;
+      --ember: #e6a562;
+      --teal: #6fd1b4;
+      --line: rgba(245, 239, 224, 0.14);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--ink);
+      color: var(--cream);
+      font-family: 'Inter', system-ui, sans-serif;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ember); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Hero */
+    header {
+      position: relative;
+      padding: 5rem 0 3rem;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+    header::before {
+      content: "";
+      position: absolute; inset: 0 0 auto 0; height: 340px;
+      background: radial-gradient(80% 100% at 50% 0%, rgba(230,165,98,0.12), transparent 70%);
+      pointer-events: none;
+    }
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 800;
+      font-size: clamp(2.8rem, 8vw, 4.5rem);
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+    .kicker {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--ember); margin-bottom: 1rem;
+    }
+    .lede {
+      font-size: 1.25rem; color: var(--cream); max-width: 40ch; margin: 1.25rem 0 1.75rem;
+    }
+    .lede strong { color: var(--ember); font-weight: 600; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; }
+    .badges img { height: 20px; }
+
+    .install {
+      display: inline-flex; align-items: center; gap: 0.75rem;
+      background: var(--ink-node); border: 1px solid var(--line);
+      border-left: 3px solid var(--ember);
+      border-radius: 8px; padding: 0.75rem 1.1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;
+    }
+    .install .prompt { color: var(--teal); font-weight: 600; }
+
+    /* Sections */
+    section { padding: 3.25rem 0; border-bottom: 1px solid var(--line); }
+    h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700; font-size: 1.9rem; margin-bottom: 0.4rem;
+    }
+    .section-sub { color: var(--muted); font-style: italic; margin-bottom: 1.75rem; }
+
+    figure { margin: 0; }
+    figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+
+    /* Why list */
+    ol.why { list-style: none; counter-reset: why; display: grid; gap: 1.1rem; }
+    ol.why li {
+      counter-increment: why;
+      background: var(--ink-card); border: 1px solid var(--line);
+      border-radius: 10px; padding: 1.1rem 1.3rem 1.1rem 3.4rem; position: relative;
+    }
+    ol.why li::before {
+      content: counter(why);
+      position: absolute; left: 1.1rem; top: 1.05rem;
+      font-family: 'JetBrains Mono', monospace; font-weight: 600;
+      color: var(--ember); font-size: 1.05rem;
+    }
+    ol.why b { color: var(--cream); }
+    ol.why span { color: var(--muted); }
+
+    /* Command grid */
+    .cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; }
+    .cmds .grp { grid-column: 1 / -1; margin-top: 0.75rem; color: var(--ember);
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; }
+    .cmds code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.86rem;
+      color: var(--teal); white-space: nowrap;
+    }
+    .cmds .desc { color: var(--muted); font-size: 0.9rem; }
+
+    pre {
+      background: var(--ink-node); border: 1px solid var(--line);
+      border-radius: 10px; padding: 1.1rem 1.25rem; overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.86rem; line-height: 1.7;
+    }
+    pre .c { color: var(--muted); }
+    pre .t { color: var(--teal); }
+
+    footer { padding: 2.5rem 0 3.5rem; color: var(--muted); font-size: 0.9rem; }
+    footer .row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1rem; }
+
+    @media (max-width: 640px) {
+      .cmds { grid-template-columns: 1fr; gap: 0.15rem; }
+      .cmds code { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="kicker">harteWired lab · npm @hartewired/gmail-cli</p>
+    <h1>gmail-cli</h1>
+    <p class="lede">A stateless, zero-dependency, <strong>agent-friendly</strong> Gmail CLI. Read, send, reply, forward, label, and organize mail straight from the shell — JSON on every command.</p>
+    <div class="badges">
+      <a href="https://github.com/harteWired/gmail-cli/actions/workflows/publish.yml"><img src="https://img.shields.io/github/actions/workflow/status/harteWired/gmail-cli/publish.yml?style=flat&labelColor=15151e&color=e6a562&label=publish" alt="publish workflow status"></a>
+      <a href="https://www.npmjs.com/package/@hartewired/gmail-cli"><img src="https://img.shields.io/npm/v/@hartewired/gmail-cli?style=flat&labelColor=15151e&color=e6a562" alt="npm version"></a>
+      <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@hartewired/gmail-cli?style=flat&labelColor=15151e&color=e6a562" alt="node engine"></a>
+      <a href="https://github.com/harteWired/gmail-cli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-e6a562?style=flat&labelColor=15151e" alt="MIT license"></a>
+      <a href="https://github.com/harteWired"><img src="https://img.shields.io/badge/by-harteWired-e6a562?style=flat&labelColor=15151e" alt="by harteWired"></a>
+    </div>
+    <div class="install">
+      <span class="prompt">$</span><span>npx @hartewired/gmail-cli help</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Stateless by design</h2>
+    <p class="section-sub">Each command mints or reuses a cached token, calls the Gmail API, prints JSON, and exits.</p>
+    <figure>
+      <img src="architecture.svg" alt="Architecture: a caller shells out to gmail, which resolves credentials, mints or reuses a cached access token, calls the Gmail REST API, prints JSON, and exits. No daemon runs when idle.">
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Why another Gmail CLI</h2>
+    <p class="section-sub">Most Gmail tools are built for a human at a terminal. This one is built to be driven by a program — an LLM agent, a cron job, a shell script.</p>
+    <ol class="why">
+      <li><b>Stateless.</b> <span>No daemon, no background auth server, no long-running process to crash or reconnect. Each command mints or reuses a cached access token and exits. Nothing runs when idle.</span></li>
+      <li><b>Zero dependencies.</b> <span>Pure Node (>= 20, built-in <code style="color:var(--teal)">fetch</code>). Nothing to audit, nothing to break on an upstream release.</span></li>
+      <li><b>Machine-readable.</b> <span>JSON by default on write and organize commands means output parses cleanly. Search-query batch ops (<code style="color:var(--teal)">--query</code>) let one command act on many messages.</span></li>
+    </ol>
+    <p style="margin-top:1.5rem;color:var(--muted)">Want a rich human TUI? Use <a href="https://github.com/pimalaya/himalaya">himalaya</a>. Want something an agent can shell out to and parse? That's this.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The shape of it</h2>
+    <p class="section-sub">One-time OAuth sign-in against your own Google Cloud client, then every command just works.</p>
+    <pre><span class="c"># one-time sign-in (loopback captures the redirect; --manual for headless boxes)</span>
+<span class="t">gmail</span> auth
+
+<span class="c"># list, read, act — Gmail search syntax everywhere</span>
+<span class="t">gmail</span> list <span style="color:var(--cream)">"is:unread newer_than:3d"</span> --max 10 --json
+<span class="t">gmail</span> send --to a@b.com --subject <span style="color:var(--cream)">"Q2 report"</span> --html --body-file note.html --attach report.pdf
+<span class="t">gmail</span> reply &lt;id&gt; --all --body <span style="color:var(--cream)">"Thanks — got it."</span>
+<span class="t">gmail</span> markread --query <span style="color:var(--cream)">"is:unread older_than:30d"</span></pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Command surface</h2>
+    <p class="section-sub">Every organize verb takes one or more <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">&lt;id&gt;</code> and/or <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">--query Q</code> for batch. Run <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">gmail help</code> for the full list.</p>
+    <div class="cmds">
+      <div class="grp">Read</div>
+      <code>profile · labels</code><span class="desc">account info, list labels</span>
+      <code>list [query] · search</code><span class="desc">list messages by Gmail query</span>
+      <code>threads · thread &lt;id&gt;</code><span class="desc">list / show threads</span>
+      <code>read &lt;id&gt; [--raw]</code><span class="desc">full message; --raw streams .eml</span>
+      <code>attachments · download</code><span class="desc">list / save attachments</span>
+
+      <div class="grp">Write</div>
+      <code>send --to A --subject S</code><span class="desc">--body, --body-file, or piped '-'</span>
+      <code>reply &lt;id&gt; [--all]</code><span class="desc">reply in-thread</span>
+      <code>forward &lt;id&gt; --to A</code><span class="desc">re-attaches originals</span>
+      <code>draft · drafts · draft-send</code><span class="desc">draft lifecycle</span>
+
+      <div class="grp">Organize</div>
+      <code>modify --add L --remove L</code><span class="desc">add / remove labels</span>
+      <code>trash · archive · spam</code><span class="desc">move mail around</span>
+      <code>markread · star · unstar</code><span class="desc">common actions</span>
+      <code>label-create · -delete · -rename</code><span class="desc">label admin</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="row">
+      <a href="https://github.com/harteWired/gmail-cli">GitHub</a>
+      <a href="https://www.npmjs.com/package/@hartewired/gmail-cli">npm</a>
+      <a href="https://github.com/harteWired/gmail-cli#readme">Docs</a>
+      <a href="https://github.com/harteWired/gmail-cli/blob/main/LICENSE">MIT License</a>
+    </div>
+    <p>Part of the <a href="https://github.com/harteWired">harteWired</a> lab. Built to be shelled out to.</p>
+  </div>
+</footer>
+
+</body>
+</html>

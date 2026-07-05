@@ -1,8 +1,10 @@
 # gmail-cli
 
-[![by — harteWired](https://img.shields.io/badge/by-harteWired-e6a562?style=flat&labelColor=15151e)](https://github.com/harteWired)
+[![publish](https://img.shields.io/github/actions/workflow/status/harteWired/gmail-cli/publish.yml?style=flat&labelColor=15151e&color=e6a562&label=publish)](https://github.com/harteWired/gmail-cli/actions/workflows/publish.yml)
 [![npm](https://img.shields.io/npm/v/@hartewired/gmail-cli?style=flat&labelColor=15151e&color=e6a562)](https://www.npmjs.com/package/@hartewired/gmail-cli)
+[![node](https://img.shields.io/node/v/@hartewired/gmail-cli?style=flat&labelColor=15151e&color=e6a562)](https://nodejs.org)
 [![license: MIT](https://img.shields.io/badge/license-MIT-e6a562?style=flat&labelColor=15151e)](./LICENSE)
+[![by — harteWired](https://img.shields.io/badge/by-harteWired-e6a562?style=flat&labelColor=15151e)](https://github.com/harteWired)
 
 A stateless, zero-dependency, **agent-friendly** Gmail CLI. Read, send, reply, forward, label, and organize mail straight from the shell — with JSON output on every command.
 
@@ -12,6 +14,10 @@ gmail send --to a@b.com --subject "Q2 report" --html --body-file note.html --att
 gmail reply <id> --all --body "Thanks — got it."
 gmail markread --query "is:unread older_than:30d"
 ```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/harteWired/gmail-cli/main/docs/architecture.svg" width="820" alt="Stateless architecture: a caller shells out to gmail, which resolves credentials, mints or reuses a cached access token, calls the Gmail REST API, prints JSON, and exits. No daemon runs when idle.">
+</p>
 
 ## Why another Gmail CLI
 

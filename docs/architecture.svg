@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" width="1280" height="560" role="img" aria-label="gmail-cli stateless architecture: a command resolves credentials, mints or reuses a cached access token, calls the Gmail REST API, prints JSON, and the process exits.">
+  <defs>
+    <marker id="arrEmber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e6a562"/>
+    </marker>
+    <marker id="arrTeal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6fd1b4"/>
+    </marker>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0"/>
+    </filter>
+    <radialGradient id="topGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#e6a562" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#e6a562" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+    text { font-family: 'Inter', 'Noto Sans', 'Helvetica Neue', 'DejaVu Sans', sans-serif; }
+    .title { font-size: 40px; font-weight: 700; fill: #f5efe0; font-family: 'Playfair Display', 'Noto Serif Display', 'DejaVu Serif', Georgia, serif; }
+    .subtitle { font-size: 12px; font-weight: 500; fill: #e6a562; letter-spacing: 0.28em; text-transform: uppercase; }
+    .node-type { font-size: 10px; font-weight: 700; fill: #b5b3a8; letter-spacing: 0.12em; }
+    .node-title { font-size: 17px; font-weight: 700; fill: #f5efe0; }
+    .node-sub { font-size: 10.5px; font-weight: 500; fill: #b5b3a8; }
+    .node-sub-teal { font-size: 10.5px; font-weight: 600; fill: #6fd1b4; }
+    .arrow-label { font-size: 10.5px; font-weight: 600; fill: #c9c5b6; }
+    .footnote { font-size: 13px; font-weight: 500; fill: #d4cfbf; }
+    .footnote-em { font-size: 13px; font-weight: 700; fill: #e6a562; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="560" fill="#15151e"/>
+  <rect width="1280" height="300" fill="url(#topGlow)"/>
+  <rect width="1280" height="560" filter="url(#grain)" opacity="0.55"/>
+
+  <!-- Title -->
+  <text x="640" y="70" text-anchor="middle" class="title">Stateless by design</text>
+  <text x="640" y="100" text-anchor="middle" class="subtitle">Command · resolve · mint or reuse · call · print · exit</text>
+
+  <!-- ===== Node row (y 235..335) ===== -->
+
+  <!-- 1: caller -->
+  <rect x="40" y="235" width="165" height="100" rx="10" fill="#1c1b26" stroke="#6fd1b4" stroke-width="1.8"/>
+  <text x="122" y="265" text-anchor="middle" class="node-type">CALLER</text>
+  <text x="122" y="290" text-anchor="middle" class="node-title">agent · cron</text>
+  <text x="122" y="308" text-anchor="middle" class="node-title">· shell</text>
+  <text x="122" y="326" text-anchor="middle" class="node-sub-teal">shells out, parses JSON</text>
+
+  <!-- 2: command process (primary) -->
+  <rect x="247" y="235" width="165" height="100" rx="10" fill="#24222f" stroke="#e6a562" stroke-width="2.2"/>
+  <rect x="253" y="241" width="153" height="88" rx="6" fill="none" stroke="#e6a562" stroke-width="1.1" opacity="0.6"/>
+  <text x="329" y="265" text-anchor="middle" class="node-type">PROCESS · SHORT-LIVED</text>
+  <text x="329" y="292" text-anchor="middle" class="node-title">gmail &lt;cmd&gt;</text>
+  <text x="329" y="315" text-anchor="middle" class="node-sub">one command, one run</text>
+
+  <!-- 3: resolve creds -->
+  <rect x="454" y="235" width="165" height="100" rx="10" fill="#1c1b26" stroke="rgba(245,239,224,0.22)" stroke-width="1.8"/>
+  <text x="536" y="265" text-anchor="middle" class="node-type">CREDENTIALS</text>
+  <text x="536" y="290" text-anchor="middle" class="node-title">resolve</text>
+  <text x="536" y="312" text-anchor="middle" class="node-sub">env → config.json</text>
+  <text x="536" y="327" text-anchor="middle" class="node-sub">refresh token</text>
+
+  <!-- 4: token cache -->
+  <rect x="661" y="235" width="165" height="100" rx="10" fill="#1c1b26" stroke="rgba(245,239,224,0.22)" stroke-width="1.8"/>
+  <text x="743" y="265" text-anchor="middle" class="node-type">ACCESS TOKEN</text>
+  <text x="743" y="290" text-anchor="middle" class="node-title">mint / reuse</text>
+  <text x="743" y="312" text-anchor="middle" class="node-sub">cached at token.json</text>
+  <text x="743" y="327" text-anchor="middle" class="node-sub">refresh when stale</text>
+
+  <!-- 5: Gmail API -->
+  <rect x="868" y="235" width="165" height="100" rx="10" fill="#1c1b26" stroke="rgba(245,239,224,0.22)" stroke-width="1.8"/>
+  <text x="950" y="265" text-anchor="middle" class="node-type">GOOGLE</text>
+  <text x="950" y="290" text-anchor="middle" class="node-title">Gmail REST</text>
+  <text x="950" y="312" text-anchor="middle" class="node-sub">gmail/v1 · fetch()</text>
+  <text x="950" y="327" text-anchor="middle" class="node-sub">no SDK, no deps</text>
+
+  <!-- 6: JSON + exit -->
+  <rect x="1075" y="235" width="165" height="100" rx="10" fill="#1c1b26" stroke="#6fd1b4" stroke-width="1.8"/>
+  <text x="1157" y="265" text-anchor="middle" class="node-type">OUTPUT</text>
+  <text x="1157" y="290" text-anchor="middle" class="node-title">JSON → exit</text>
+  <text x="1157" y="312" text-anchor="middle" class="node-sub-teal">stdout, clean parse</text>
+  <text x="1157" y="327" text-anchor="middle" class="node-sub">process ends</text>
+
+  <!-- ===== Arrows ===== -->
+  <line x1="205" y1="285" x2="243" y2="285" stroke="#6fd1b4" stroke-width="2" marker-end="url(#arrTeal)"/>
+  <line x1="412" y1="285" x2="450" y2="285" stroke="#e6a562" stroke-width="2" marker-end="url(#arrEmber)"/>
+  <line x1="619" y1="285" x2="657" y2="285" stroke="#e6a562" stroke-width="2" marker-end="url(#arrEmber)"/>
+  <line x1="826" y1="285" x2="864" y2="285" stroke="#e6a562" stroke-width="2" marker-end="url(#arrEmber)"/>
+  <text x="845" y="278" text-anchor="middle" class="arrow-label">Bearer</text>
+  <line x1="1033" y1="285" x2="1071" y2="285" stroke="#e6a562" stroke-width="2" marker-end="url(#arrEmber)"/>
+
+  <!-- return arrow: output back to caller -->
+  <path d="M1157 335 L1157 400 L122 400 L122 339" fill="none" stroke="#6fd1b4" stroke-width="1.8" stroke-dasharray="5 5" marker-end="url(#arrTeal)"/>
+  <text x="640" y="393" text-anchor="middle" class="arrow-label">parsed result returns to the caller — then nothing runs</text>
+
+  <!-- ===== Footnote strip ===== -->
+  <rect x="40" y="452" width="1200" height="64" rx="12" fill="none" stroke="rgba(245,239,224,0.14)" stroke-width="1.4"/>
+  <text x="640" y="480" text-anchor="middle"><tspan class="footnote-em">No daemon. No background auth server. Nothing runs when idle.</tspan></text>
+  <text x="640" y="502" text-anchor="middle"><tspan class="footnote">Node &gt;= 20 · zero runtime dependencies · every command mints or reuses a token, calls, prints, and exits.</tspan></text>
+</svg>
