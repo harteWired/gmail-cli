@@ -1,0 +1,43 @@
+{
+  "name": "@hartewired/gmail-cli",
+  "version": "1.0.0",
+  "description": "A stateless, zero-dependency, agent-friendly Gmail CLI. Read, send, reply, label, and organize mail from the shell — no daemon, JSON output on every command.",
+  "type": "module",
+  "bin": {
+    "gmail": "bin/gmail.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "gmail",
+    "cli",
+    "email",
+    "google",
+    "oauth",
+    "agent",
+    "llm",
+    "automation",
+    "stateless",
+    "zero-dependency"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harteWired/gmail-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/harteWired/gmail-cli/issues"
+  },
+  "homepage": "https://github.com/harteWired/gmail-cli#readme",
+  "author": "Matt Harte (https://github.com/harteWired)",
+  "license": "MIT"
+}
