@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildRaw, header, extractBody, htmlToText,
-  listAttachments, guessMimeType, parseAddrs, base64urlDecode,
+  listAttachments, guessMimeType, parseAddrs, base64urlDecode, resolveReplyRecipients,
 } from '../lib/mime.js';
 
 const decode = (raw) => base64urlDecode(raw).toString('utf8');
@@ -110,4 +110,57 @@ test('parseAddrs: names, angle brackets, bare emails', () => {
 test('parseAddrs: empty input', () => {
   assert.deepEqual(parseAddrs(''), []);
   assert.deepEqual(parseAddrs(undefined), []);
+});
+
+test('resolveReplyRecipients: default replies to From', () => {
+  const r = resolveReplyRecipients({ fromHeader: 'Alice <a@x.com>', toHeader: 'me@x.com', me: 'me@x.com' });
+  assert.deepEqual(r, { to: ['Alice <a@x.com>'], cc: [], bcc: [] });
+});
+
+test('resolveReplyRecipients: Reply-To wins over From', () => {
+  const r = resolveReplyRecipients({ fromHeader: 'Alice <a@x.com>', replyToHeader: 'Bob <b@x.com>', toHeader: 'me@x.com', me: 'me@x.com' });
+  assert.deepEqual(r.to, ['Bob <b@x.com>']);
+});
+
+test('resolveReplyRecipients: WM#1564 — a self-sent message would otherwise loop the reply back to us', () => {
+  // We sent the original: From is our own address, correspondent is in To.
+  const r = resolveReplyRecipients({ fromHeader: 'Me <me@x.com>', toHeader: 'Correspondent <c@x.com>', me: 'me@x.com' });
+  assert.deepEqual(r.to, ['Me <me@x.com>'], 'unpatched default behavior: loops back to us');
+
+  // --to fixes it while staying a reply (caller still uses the same threadId
+  // + In-Reply-To/References — this function only resolves recipients).
+  const fixed = resolveReplyRecipients({ fromHeader: 'Me <me@x.com>', toHeader: 'Correspondent <c@x.com>', me: 'me@x.com', to: ['Correspondent <c@x.com>'] });
+  assert.deepEqual(fixed.to, ['Correspondent <c@x.com>']);
+  assert.deepEqual(fixed.cc, []);
+});
+
+test('resolveReplyRecipients: --all folds in the rest of the original To/Cc as Cc, excluding self and duplicates', () => {
+  const r = resolveReplyRecipients({
+    fromHeader: 'Alice <a@x.com>',
+    toHeader: 'me@x.com, Carol <c@x.com>',
+    ccHeader: 'Dave <d@x.com>, Alice <a@x.com>',
+    me: 'me@x.com',
+    all: true
+  });
+  assert.deepEqual(r.to, ['Alice <a@x.com>']);
+  assert.deepEqual(r.cc, ['Carol <c@x.com>', 'Dave <d@x.com>']); // me + Alice (already the To) excluded
+});
+
+test('resolveReplyRecipients: --all with an explicit --to excludes that address (and its own cc) from the auto-cc pass', () => {
+  const r = resolveReplyRecipients({
+    fromHeader: 'Me <me@x.com>',
+    toHeader: 'Correspondent <c@x.com>',
+    ccHeader: 'Eve <e@x.com>',
+    me: 'me@x.com',
+    all: true,
+    to: ['Correspondent <c@x.com>'],
+    cc: ['Frank <f@x.com>']
+  });
+  assert.deepEqual(r.to, ['Correspondent <c@x.com>']);
+  assert.deepEqual(r.cc, ['Frank <f@x.com>', 'Eve <e@x.com>']); // Correspondent not re-added; Eve pulled in
+});
+
+test('resolveReplyRecipients: explicit --bcc passes through untouched', () => {
+  const r = resolveReplyRecipients({ fromHeader: 'Alice <a@x.com>', toHeader: 'me@x.com', me: 'me@x.com', bcc: ['audit@x.com'] });
+  assert.deepEqual(r.bcc, ['audit@x.com']);
 });

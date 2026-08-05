@@ -10,7 +10,7 @@ import { gmail } from '../lib/api.js';
 import { parseArgs } from '../lib/args.js';
 import {
   buildRaw, header, extractBody, htmlToText,
-  listAttachments, base64urlDecode, guessMimeType, parseAddrs,
+  listAttachments, base64urlDecode, guessMimeType, resolveReplyRecipients,
 } from '../lib/mime.js';
 import { authorize } from '../lib/oauth.js';
 import { resolveCreds, saveAccount, setAccount, activeAccount, listAccounts, configPath } from '../lib/config.js';
@@ -226,29 +226,32 @@ const commands = {
 
   async reply(pos, flags) {
     const id = pos[0];
-    if (!id) throw new Error('usage: gmail reply <messageId> --body <text> [--html] [--all] [--attach <f>]...');
+    if (!id) throw new Error('usage: gmail reply <messageId> --body <text> [--html] [--all] [--to <addr>] [--cc <addr>] [--bcc <addr>] [--attach <f>]...');
     const orig = await gmail('GET', `/messages/${id}`, { query: { format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Message-ID', 'References', 'Reply-To'] } });
     const p = orig.payload;
-    const me = (await myAddress()).toLowerCase();
-    const fromAddr = parseAddrs(header(p, 'Reply-To') || header(p, 'From'));
-    const to = fromAddr.map((a) => a.raw);
-    let cc = [];
-    if (flags.all) {
-      const seen = new Set([me, ...fromAddr.map((a) => a.email.toLowerCase())]);
-      for (const a of [...parseAddrs(header(p, 'To')), ...parseAddrs(header(p, 'Cc'))]) {
-        const key = a.email.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        cc.push(a.raw);
-      }
-    }
+    const me = await myAddress();
+    // --to overrides the default "reply to sender" recipient — needed when the
+    // ORIGINAL message's sender was us (a thread of our own outbound mail), where
+    // the default would loop the reply back to our own address. Still a real
+    // `reply` (same threadId + In-Reply-To/References below), not a `send`.
+    const { to, cc, bcc } = resolveReplyRecipients({
+      fromHeader: header(p, 'From'),
+      replyToHeader: header(p, 'Reply-To'),
+      toHeader: header(p, 'To'),
+      ccHeader: header(p, 'Cc'),
+      me,
+      all: !!flags.all,
+      to: flags.to ? asArray(flags.to) : [],
+      cc: flags.cc ? asArray(flags.cc) : [],
+      bcc: flags.bcc ? asArray(flags.bcc) : []
+    });
     const subject = header(p, 'Subject');
     const msgId = header(p, 'Message-ID');
     const refs = [header(p, 'References'), msgId].filter(Boolean).join(' ');
     const { text, html } = resolveBody(flags);
-    const raw = buildRaw({ to, cc, subject: /^re:/i.test(subject) ? subject : `Re: ${subject}`, text, html, attachments: resolveAttachments(flags), inReplyTo: msgId || undefined, references: refs || undefined });
+    const raw = buildRaw({ to, cc, bcc, subject: /^re:/i.test(subject) ? subject : `Re: ${subject}`, text, html, attachments: resolveAttachments(flags), inReplyTo: msgId || undefined, references: refs || undefined });
     const res = await gmail('POST', '/messages/send', { body: { raw, threadId: orig.threadId } });
-    out({ replied: true, id: res.id, threadId: res.threadId, cc });
+    out({ replied: true, id: res.id, threadId: res.threadId, to, cc, bcc });
   },
 
   async forward(pos, flags) {
@@ -387,7 +390,7 @@ Read:
 
 Write (body: --body TEXT | --body-file F | pipe '-'; --html sends HTML+text):
   send --to A --subject S --body B [--html] [--attach F]... [--cc] [--bcc]
-  reply <id> --body B [--html] [--all] [--attach F]...
+  reply <id> --body B [--html] [--all] [--to A] [--cc A] [--bcc A] [--attach F]...
   forward <id> --to A [--body intro] [--html] [--no-attachments]
   draft --to A --subject S --body B [--html] [--attach F]...
   drafts | draft-send <draftId> | draft-delete <draftId>
