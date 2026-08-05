@@ -121,7 +121,7 @@ Write — body from `--body TEXT`, `--body-file PATH`, or a pipe (`--body -`);
 | Command | Purpose |
 |---|---|
 | `send --to A --subject S <body> [--html] [--attach F]... [--cc] [--bcc]` | send a message |
-| `reply <id> <body> [--html] [--all] [--attach F]...` | reply in-thread; `--all` = reply-all |
+| `reply <id> <body> [--html] [--all] [--to A] [--cc A] [--bcc A] [--attach F]...` | reply in-thread; `--all` = reply-all; `--to` overrides the recipient (e.g. when the original was one of *our own* sends, so replying to its sender would otherwise loop back to us) while keeping the thread |
 | `forward <id> --to A [--body intro] [--html] [--no-attachments]` | forward (re-attaches originals) |
 | `draft …` / `drafts` / `draft-send <id>` / `draft-delete <id>` | draft lifecycle |
 
