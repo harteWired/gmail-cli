@@ -10,7 +10,7 @@ import { gmail } from '../lib/api.js';
 import { parseArgs } from '../lib/args.js';
 import {
   buildRaw, header, extractBody, htmlToText,
-  listAttachments, base64urlDecode, guessMimeType, resolveReplyRecipients,
+  listAttachments, base64urlDecode, guessMimeType, resolveReplyRecipients, isEmptyBody,
 } from '../lib/mime.js';
 import { authorize } from '../lib/oauth.js';
 import { resolveCreds, saveAccount, setAccount, activeAccount, listAccounts, configPath } from '../lib/config.js';
@@ -35,6 +35,19 @@ function resolveBody(flags, { fallback = '' } = {}) {
     return { html: content, text: flags.text ? readContent(flags.text) : undefined };
   }
   return { text: content };
+}
+
+// --allow-empty must be the BARE flag. parseArgs turns `--allow-empty false`
+// into the string 'false', which is truthy — so a plain truthiness check would
+// let the very words "allow-empty false" disable the guard. Fail closed.
+const allowEmpty = (flags) => flags['allow-empty'] === true;
+
+// Shared message for the empty-body refusal on the verbs that transmit.
+function emptyBodyError(usage) {
+  return 'refusing to send an empty body — this is almost always a mistake '
+    + '(a missing --body, or a syntax probe expecting usage text).\n'
+    + `${usage}\n`
+    + 'If you really mean to send an empty message, pass --allow-empty.';
 }
 
 function resolveAttachments(flags) {
@@ -217,16 +230,33 @@ const commands = {
   },
 
   async send(pos, flags) {
-    if (!flags.to) throw new Error('usage: gmail send --to <addr> --subject <s> --body <text>|--body-file <f> [--html] [--attach <f>]... [--cc] [--bcc]');
+    const usage = 'usage: gmail send --to <addr> --subject <s> --body <text>|--body-file <f> [--html] [--attach <f>]... [--cc] [--bcc] [--allow-empty]';
+    if (!flags.to) throw new Error(usage);
+    // Resolve body and attachments exactly ONCE and reuse — see the note in
+    // `reply`; with `--body -` a second resolve would read an exhausted stdin.
     const { text, html } = resolveBody(flags);
-    const raw = buildRaw({ to: asArray(flags.to), cc: asArray(flags.cc), bcc: asArray(flags.bcc), subject: flags.subject || '', text, html, attachments: resolveAttachments(flags) });
+    const attachments = resolveAttachments(flags);
+    if (!allowEmpty(flags) && isEmptyBody({ text, html }, { attachments: attachments.length })) throw new Error(emptyBodyError(usage));
+    const raw = buildRaw({ to: asArray(flags.to), cc: asArray(flags.cc), bcc: asArray(flags.bcc), subject: flags.subject || '', text, html, attachments });
     const res = await gmail('POST', '/messages/send', { body: { raw } });
     out({ sent: true, id: res.id, threadId: res.threadId });
   },
 
   async reply(pos, flags) {
+    const usage = 'usage: gmail reply <messageId> --body <text> [--html] [--all] [--to <addr>] [--cc <addr>] [--bcc <addr>] [--attach <f>]... [--allow-empty]';
     const id = pos[0];
-    if (!id) throw new Error('usage: gmail reply <messageId> --body <text> [--html] [--all] [--to <addr>] [--cc <addr>] [--bcc <addr>] [--attach <f>]...');
+    if (!id) throw new Error(usage);
+    // ⚠ Resolve the body exactly ONCE, here, and reuse it for the send below.
+    // `--body -` / `--body-file -` read stdin via readFileSync(0); a second
+    // resolve returns '' because the stream is already exhausted. Validating
+    // with one call and sending with another would therefore transmit the empty
+    // string the guard had just approved — the guard would CAUSE the blank
+    // email it exists to prevent.
+    const body = resolveBody(flags);
+    const attachments = resolveAttachments(flags);
+    // Checked BEFORE the GET below: a malformed invocation should cost nothing
+    // and must never reach the send call.
+    if (!allowEmpty(flags) && isEmptyBody(body, { attachments: attachments.length })) throw new Error(emptyBodyError(usage));
     const orig = await gmail('GET', `/messages/${id}`, { query: { format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Message-ID', 'References', 'Reply-To'] } });
     const p = orig.payload;
     const me = await myAddress();
@@ -248,8 +278,8 @@ const commands = {
     const subject = header(p, 'Subject');
     const msgId = header(p, 'Message-ID');
     const refs = [header(p, 'References'), msgId].filter(Boolean).join(' ');
-    const { text, html } = resolveBody(flags);
-    const raw = buildRaw({ to, cc, bcc, subject: /^re:/i.test(subject) ? subject : `Re: ${subject}`, text, html, attachments: resolveAttachments(flags), inReplyTo: msgId || undefined, references: refs || undefined });
+    const { text, html } = body;
+    const raw = buildRaw({ to, cc, bcc, subject: /^re:/i.test(subject) ? subject : `Re: ${subject}`, text, html, attachments, inReplyTo: msgId || undefined, references: refs || undefined });
     const res = await gmail('POST', '/messages/send', { body: { raw, threadId: orig.threadId } });
     out({ replied: true, id: res.id, threadId: res.threadId, to, cc, bcc });
   },
@@ -407,11 +437,20 @@ Docs: https://github.com/harteWired/gmail-cli`);
 
 async function main() {
   const [, , cmd, ...rest] = process.argv;
-  const command = commands[cmd];
-  if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h' || !command) {
-    if (cmd && !command) console.error(`unknown command: ${cmd}\n`);
+  // Object.hasOwn, not a bare lookup: `commands['constructor']` and
+  // `commands['toString']` resolve to inherited Object prototype members, which
+  // are truthy — so `gmail constructor` skipped the unknown-command error and
+  // silently exited 0 instead of reporting a typo.
+  const command = Object.hasOwn(commands, cmd ?? '') ? commands[cmd] : undefined;
+  // `--help`/`-h` are accepted aliases, so they must not also be reported as an
+  // unknown command or exit non-zero — a help request that exits 1 breaks any
+  // caller running under `set -e`.
+  const isHelp = cmd === 'help' || cmd === '--help' || cmd === '-h';
+  const unknown = Boolean(cmd) && !command && !isHelp;
+  if (!cmd || isHelp || !command) {
+    if (unknown) console.error(`unknown command: ${cmd}\n`);
     commands.help();
-    process.exit(cmd && !command ? 1 : 0);
+    process.exit(unknown ? 1 : 0);
   }
   const { positional, flags } = parseArgs(rest);
   if (flags.account) setAccount(flags.account); // global: select which account this command uses
